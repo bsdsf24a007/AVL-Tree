@@ -2,251 +2,163 @@ import React, { useState } from 'react';
 import { HistoryEntry } from '../types';
 
 interface ControlsProps {
-  onInsert: (val: number) => void;
-  onDelete: (val: number) => void;
+  onInsert: (v: number) => void;
+  onDelete: (v: number) => void;
   onReset: () => void;
-  onUndoOp: () => void;
+  onUndo: () => void;
+  onStep: (dir: number) => void;
   onAutoPlay: () => void;
-  onPause: () => void;
-  onStepForward: () => void;
-  onStepBackward: () => void;
-  setSpeed: (val: number) => void;
-  toggleHeights: () => void;
-  toggleBF: () => void;
-  toggleBaseTree: () => void;
-  onPreset: (values: number[]) => void;
+  setSpeed: (s: number) => void;
+  toggles: { h: boolean, bf: boolean, comp: boolean };
+  setToggles: any;
   isPlaying: boolean;
-  speed: number;
-  showHeights: boolean;
-  showBF: boolean;
-  showBaseTree: boolean;
-  canUndoStep: boolean;
-  canRedoStep: boolean;
   history: HistoryEntry[];
+  canPrev: boolean;
+  canNext: boolean;
 }
 
-export const Controls: React.FC<ControlsProps> = ({
-  onInsert,
-  onDelete,
-  onReset,
-  onUndoOp,
-  onAutoPlay,
-  onPause,
-  onStepForward,
-  onStepBackward,
-  setSpeed,
-  toggleHeights,
-  toggleBF,
-  toggleBaseTree,
-  onPreset,
-  isPlaying,
-  speed,
-  showHeights,
-  showBF,
-  showBaseTree,
-  canUndoStep,
-  canRedoStep,
-  history
+export const Controls: React.FC<ControlsProps> = ({ 
+  onInsert, onDelete, onReset, onUndo, onStep, onAutoPlay, 
+  setSpeed, toggles, setToggles, isPlaying, history, canPrev, canNext 
 }) => {
-  const [inputValue, setInputValue] = useState<string>('');
+  const [val, setVal] = useState('');
 
-  const handleInsert = () => {
-    const val = parseInt(inputValue);
-    if (!isNaN(val)) {
-      onInsert(val);
-      setInputValue('');
-    }
-  };
-
-  const handleDelete = () => {
-    const val = parseInt(inputValue);
-    if (!isNaN(val)) {
-      onDelete(val);
-      setInputValue('');
-    }
-  };
-
-  // Educational Presets
-  const presets = [
-    { name: "LL Case", seq: [30, 20, 10], desc: "Triggers Right Rotation" },
-    { name: "RR Case", seq: [10, 20, 30], desc: "Triggers Left Rotation" },
-    { name: "LR Case", seq: [30, 10, 20], desc: "Left then Right Rotation" },
-    { name: "RL Case", seq: [10, 30, 20], desc: "Right then Left Rotation" },
-  ];
+  const ActionButton = ({ onClick, children, className = "", disabled = false }: any) => (
+    <button 
+      onClick={onClick} 
+      disabled={disabled}
+      className={`relative overflow-hidden group transition-all duration-300 disabled:opacity-20 active:scale-95 ${className}`}
+    >
+      <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+      {children}
+    </button>
+  );
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 text-slate-100 w-full md:w-80 shadow-2xl z-20 overflow-hidden">
-      
-      {/* Header */}
-      <div className="p-6 border-b border-slate-700 bg-slate-900 shrink-0">
-        <h1 className="text-2xl font-black tracking-tight bg-gradient-to-r from-sky-400 to-indigo-400 bg-clip-text text-transparent">
-          AVL Visualizer
-        </h1>
-        <p className="text-xs text-slate-400 mt-1">Interactive Learning Simulator</p>
+    <div className="w-80 h-full bg-[#0b1121] border-r border-slate-800/60 flex flex-col p-7 shadow-2xl z-30">
+      <div className="mb-10 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-black text-white tracking-tighter flex items-center gap-2">
+            AVL<span className="bg-indigo-600 text-[10px] px-1.5 py-0.5 rounded-sm">PRO</span>
+          </h1>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Algorithmic Engine</p>
+        </div>
+        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="System Online" />
       </div>
-      
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 flex flex-col gap-8">
-        
-        {/* Operations */}
-        <div className="flex flex-col gap-3">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Operations</label>
-          <div className="flex gap-2">
-            <input
-              type="number"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Value"
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-sky-500 outline-none text-white placeholder-slate-500 transition-all"
-              onKeyDown={(e) => e.key === 'Enter' && handleInsert()}
+
+      <div className="space-y-8 flex-1 overflow-y-auto custom-scrollbar pr-3">
+        {/* Input Section */}
+        <section>
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-3 ml-1">Command Input</label>
+          <div className="flex gap-2 p-1 bg-slate-900/50 rounded-xl border border-slate-800 focus-within:border-indigo-500/50 transition-colors">
+            <input 
+              type="number" 
+              value={val} 
+              onChange={e => setVal(e.target.value)} 
+              onKeyDown={e => e.key === 'Enter' && onInsert(Number(val))}
+              placeholder="Enter node value..." 
+              className="flex-1 bg-transparent px-3 py-2 text-white text-sm font-medium outline-none placeholder:text-slate-700"
             />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button 
-              onClick={handleInsert}
-              disabled={isPlaying || !inputValue}
-              className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg text-sm font-semibold transition-all shadow-lg shadow-emerald-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span>+ Insert</span>
-            </button>
-            <button 
-              onClick={handleDelete}
-              disabled={isPlaying || !inputValue}
-              className="flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 text-white py-2.5 rounded-lg text-sm font-semibold transition-all shadow-lg shadow-rose-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span>- Delete</span>
-            </button>
+            <div className="flex gap-1">
+              <ActionButton 
+                onClick={() => { onInsert(Number(val)); setVal(''); }} 
+                className="w-9 h-9 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg flex items-center justify-center"
+              >
+                <span className="text-lg font-bold">＋</span>
+              </ActionButton>
+              <ActionButton 
+                onClick={() => { onDelete(Number(val)); setVal(''); }} 
+                className="w-9 h-9 bg-slate-800 hover:bg-rose-600 text-slate-400 hover:text-white rounded-lg flex items-center justify-center"
+              >
+                <span className="text-lg font-bold">−</span>
+              </ActionButton>
+            </div>
           </div>
           <button 
-             onClick={onUndoOp}
-             disabled={isPlaying || history.length === 0}
-             className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-200 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+            onClick={onUndo} 
+            disabled={history.length === 0} 
+            className="w-full mt-3 py-2.5 bg-slate-900/80 border border-slate-800 hover:border-slate-600 rounded-xl text-[10px] font-black text-slate-400 tracking-widest uppercase transition-all disabled:opacity-30"
           >
-             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
-             Undo Last Op
+            Undo Last Cmd
           </button>
-        </div>
+        </section>
 
-        {/* Playback */}
-        <div className="flex flex-col gap-3">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Animation Control</label>
-            
-            <div className="bg-slate-800 p-2 rounded-xl flex items-center justify-between border border-slate-700">
-                <button onClick={onStepBackward} disabled={!canUndoStep || isPlaying} className="p-2 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors disabled:opacity-30">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
-                </button>
-                
-                {!isPlaying ? (
-                    <button onClick={onAutoPlay} disabled={!canRedoStep} className="w-10 h-10 flex items-center justify-center bg-sky-500 hover:bg-sky-400 text-white rounded-full shadow-lg shadow-sky-500/30 transition-all disabled:opacity-50 disabled:bg-slate-600">
-                        <svg className="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                    </button>
-                ) : (
-                    <button onClick={onPause} className="w-10 h-10 flex items-center justify-center bg-amber-500 hover:bg-amber-400 text-white rounded-full shadow-lg shadow-amber-500/30 transition-all">
-                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                    </button>
-                )}
+        {/* Playback Controls */}
+        <section>
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-3 ml-1">Playback Timeline</label>
+          <div className="grid grid-cols-3 gap-2 bg-slate-900/50 p-2 rounded-2xl border border-slate-800/50">
+            <ActionButton onClick={() => onStep(-1)} disabled={!canPrev} className="py-2 flex justify-center bg-slate-800 rounded-xl text-slate-300">
+              <span className="text-sm">←</span>
+            </ActionButton>
+            <ActionButton onClick={onAutoPlay} className={`py-2 flex justify-center rounded-xl text-white ${isPlaying ? 'bg-amber-600' : 'bg-emerald-600'}`}>
+              <span className="text-sm">{isPlaying ? '⏸' : '▶'}</span>
+            </ActionButton>
+            <ActionButton onClick={() => onStep(1)} disabled={!canNext} className="py-2 flex justify-center bg-slate-800 rounded-xl text-slate-300">
+              <span className="text-sm">→</span>
+            </ActionButton>
+          </div>
+        </section>
 
-                <button onClick={onStepForward} disabled={!canRedoStep || isPlaying} className="p-2 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors disabled:opacity-30">
-                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
-                </button>
-            </div>
-
-            <div className="flex flex-col gap-2 mt-2">
-                <div className="flex justify-between text-xs text-slate-400 font-mono">
-                    <span>Slow</span>
-                    <span>Fast</span>
+        {/* View Options */}
+        <section>
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-3 ml-1">Visualization layers</label>
+          <div className="space-y-1.5">
+            {[ 
+              { k: 'comp', l: 'Split Logic Analyzer', desc: 'Side-by-side comparison' }, 
+              { k: 'h', l: 'Node Heights', desc: 'Vertical levels indicator' }, 
+              { k: 'bf', l: 'Balance Matrix', desc: 'Critical path delta' } 
+            ].map(t => (
+              <label key={t.k} className="group flex items-center justify-between p-3 rounded-xl border border-transparent hover:bg-slate-900/80 hover:border-slate-800 cursor-pointer transition-all">
+                <div>
+                  <div className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors">{t.l}</div>
+                  <div className="text-[9px] text-slate-600 font-medium uppercase tracking-tight">{t.desc}</div>
                 </div>
-                <input
-                    type="range"
-                    min="100"
-                    max="2000"
-                    step="100"
-                    value={speed}
-                    onChange={(e) => setSpeed(Number(e.target.value))}
-                    className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500"
-                />
-            </div>
-        </div>
-
-        {/* History Log */}
-        {history.length > 0 && (
-            <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Operation Log</label>
-                <div className="flex flex-col gap-1 max-h-32 overflow-y-auto pr-1">
-                    {history.map((entry, idx) => (
-                        <div key={idx} className="text-xs text-slate-400 px-2 py-1 bg-slate-800/50 rounded border border-slate-700/50 flex justify-between">
-                            <span>{idx + 1}. {entry.label}</span>
-                        </div>
-                    ))}
-                    <div className="text-xs text-sky-400 px-2 py-1 bg-sky-900/20 rounded border border-sky-500/30 font-medium animate-pulse">
-                        Current...
-                    </div>
+                <div className="relative inline-flex items-center">
+                  <input 
+                    type="checkbox" 
+                    checked={(toggles as any)[t.k]} 
+                    onChange={() => setToggles((p: any) => ({ ...p, [t.k]: !p[t.k] }))} 
+                    className="sr-only peer" 
+                  />
+                  <div className="w-9 h-5 bg-slate-800 rounded-full peer-checked:bg-indigo-600 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4" />
                 </div>
-            </div>
-        )}
+              </label>
+            ))}
+          </div>
+        </section>
 
-        {/* Learn / Presets */}
-        <div className="flex flex-col gap-3">
-             <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Learn Scenarios</label>
-             <div className="grid grid-cols-1 gap-2">
-                {presets.map((preset) => (
-                    <button 
-                        key={preset.name}
-                        onClick={() => onPreset(preset.seq)}
-                        disabled={isPlaying}
-                        className="text-left px-4 py-3 bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-slate-600 rounded-lg transition-all group disabled:opacity-50"
-                    >
-                        <div className="flex justify-between items-center">
-                            <span className="font-semibold text-sm text-sky-400 group-hover:text-sky-300">{preset.name}</span>
-                            <span className="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-mono">{preset.seq.join(', ')}</span>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">{preset.desc}</p>
-                    </button>
-                ))}
-             </div>
-        </div>
+        {/* History Feed */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Operation Feed</label>
+            <span className="text-[10px] font-bold text-slate-700">{history.length} ITEMS</span>
+          </div>
+          <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+            {history.slice().reverse().map((h, i) => (
+              <div key={i} className="group p-3 bg-slate-900/30 border border-slate-800/50 rounded-xl flex items-center gap-3 hover:bg-slate-900/80 transition-all cursor-default">
+                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
+                <div className="flex-1">
+                  <div className="text-[11px] font-bold text-slate-300">{h.label}</div>
+                  <div className="text-[9px] text-slate-600 font-mono mt-0.5">SEQ_ID_{history.length - i}</div>
+                </div>
+              </div>
+            ))}
+            {history.length === 0 && (
+              <div className="py-8 text-center border border-dashed border-slate-800/50 rounded-xl">
+                <span className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">Feed Empty</span>
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
 
-        {/* Settings */}
-        <div className="flex flex-col gap-3">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Visualization</label>
-            <div className="flex flex-col gap-2">
-                 <label className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-800 transition-colors">
-                    <div className={`w-5 h-5 rounded flex items-center justify-center border ${showBaseTree ? 'bg-amber-500 border-amber-500' : 'border-slate-600'}`}>
-                        {showBaseTree && <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>}
-                    </div>
-                    <input type="checkbox" checked={showBaseTree} onChange={toggleBaseTree} className="hidden" />
-                    <div className="flex flex-col">
-                        <span className="text-sm text-slate-200 font-medium">Compare Mode</span>
-                        <span className="text-[10px] text-slate-400">Side-by-side view</span>
-                    </div>
-                 </label>
-
-                 <label className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-800 transition-colors">
-                    <div className={`w-5 h-5 rounded flex items-center justify-center border ${showHeights ? 'bg-sky-500 border-sky-500' : 'border-slate-600'}`}>
-                        {showHeights && <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>}
-                    </div>
-                    <input type="checkbox" checked={showHeights} onChange={toggleHeights} className="hidden" />
-                    <span className="text-sm text-slate-300">Show Node Heights</span>
-                 </label>
-                 
-                 <label className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-800 transition-colors">
-                    <div className={`w-5 h-5 rounded flex items-center justify-center border ${showBF ? 'bg-sky-500 border-sky-500' : 'border-slate-600'}`}>
-                        {showBF && <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>}
-                    </div>
-                    <input type="checkbox" checked={showBF} onChange={toggleBF} className="hidden" />
-                    <span className="text-sm text-slate-300">Show Balance Factors</span>
-                 </label>
-            </div>
-        </div>
-
-        <div className="mt-auto pt-6">
-            <button 
-                onClick={onReset}
-                className="w-full border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 py-3 rounded-lg text-sm transition-all"
-            >
-                Reset Canvas
-            </button>
-        </div>
-
+      <div className="mt-8 pt-6 border-t border-slate-800/50">
+        <button 
+          onClick={onReset} 
+          className="w-full py-3 bg-rose-950/20 border border-rose-900/30 text-rose-500/60 hover:text-rose-400 hover:bg-rose-900/30 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all"
+        >
+          Factory Reset
+        </button>
       </div>
     </div>
   );

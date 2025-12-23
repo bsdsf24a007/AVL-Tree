@@ -5,7 +5,6 @@ export interface AVLNode {
   balanceFactor: number;
   left: AVLNode | null;
   right: AVLNode | null;
-  // Visual properties calculated during layout
   x: number;
   y: number;
   highlight?: 'insert' | 'delete' | 'rotate' | 'imbalance' | 'check' | 'none';
@@ -13,18 +12,17 @@ export interface AVLNode {
 
 export interface AnimationStep {
   tree: AVLNode | null;
-  comparisonTree?: AVLNode | null; // The specific state before a rotation
-  baseTree?: AVLNode | null; // The state before the entire operation started
+  comparisonTree?: AVLNode | null;
+  baseTree?: AVLNode | null;
   description: string;
   highlightNodeId?: string | null;
-  highlightEdgeIds?: string[];
   actionType: 'insert' | 'delete' | 'balance' | 'rotate' | 'info' | 'check' | 'imbalance';
 }
 
 export interface HistoryEntry {
   tree: AVLNode | null;
   label: string;
-  stepIndex: number; // The index in the steps array where this state ended
+  stepStartIndex: number;
 }
 
 export interface AppState {
@@ -32,7 +30,7 @@ export interface AppState {
   steps: AnimationStep[];
   currentStepIndex: number;
   isPlaying: boolean;
-  playbackSpeed: number; // ms per step
+  playbackSpeed: number;
   showHeights: boolean;
   showBalanceFactors: boolean;
 }
