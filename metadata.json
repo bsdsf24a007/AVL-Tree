@@ -1,0 +1,5 @@
+{
+  "name": "AVL Tree Visualizer",
+  "description": "An interactive, educational simulator for AVL trees with step-by-step animations, detailed explanations, and real-time visualization of balancing operations.",
+  "requestFramePermissions": []
+}
