@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { AVLNode, AnimationStep, HistoryEntry } from './types';
 import { generateAVLTree, calculateLayout } from './utils/avl';
@@ -13,6 +14,7 @@ export default function App() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [toggles, setToggles] = useState({ h: true, bf: true, comp: true });
   const [compOffset, setCompOffset] = useState(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (isPlaying) {
@@ -57,15 +59,19 @@ export default function App() {
     setIsPlaying(false);
   };
 
+  // Define helpers for step controls to be accessible in both Desktop Controls and Mobile Control Bar
+  const onStep = (d: number) => setStepIdx(p => Math.max(-1, Math.min(steps.length - 1, p + d)));
+  const canPrev = stepIdx > -1;
+  const canNext = stepIdx < steps.length - 1;
+
   const currStep = steps[stepIdx];
   const displayTree = currStep ? currStep.tree : root;
 
-  // Comparison Logic - Enhanced for better UX
   let leftTree: AVLNode | null = null;
-  let leftLabel = "Ready State";
+  let leftLabel = "Ready";
   if (currStep?.comparisonTree && compOffset === 0) {
     leftTree = currStep.comparisonTree;
-    leftLabel = "Pre-Rotation Trace";
+    leftLabel = "Pre-Rotation";
   } else if (compOffset === 0) {
     leftTree = currStep?.baseTree || null;
     leftLabel = "Initial State";
@@ -73,88 +79,93 @@ export default function App() {
     const hIdx = history.length - compOffset;
     if (hIdx >= 0 && hIdx < history.length) {
       leftTree = calculateLayout(history[hIdx].tree);
-      leftLabel = `Snapshot: ${history[hIdx].label}`;
+      leftLabel = `${history[hIdx].label}`;
     }
   }
 
   return (
-    <div className="flex h-screen bg-[#020617] text-slate-200 overflow-hidden font-sans">
-      {/* Dynamic Background Mesh */}
-      <div className="fixed inset-0 pointer-events-none opacity-20">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-900 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-blue-900 rounded-full blur-[100px]" />
-      </div>
-
+    <div className="flex h-screen bg-[#020617] text-slate-200 overflow-hidden font-sans selection:bg-indigo-500/30">
       <Controls 
         onInsert={onInsert} onDelete={onDelete} onReset={() => window.location.reload()} 
-        onUndo={onUndo} onStep={d => setStepIdx(p => Math.max(-1, Math.min(steps.length-1, p+d)))}
+        onUndo={onUndo} onStep={onStep}
         onAutoPlay={() => setIsPlaying(!isPlaying)} setSpeed={setSpeed}
         toggles={toggles} setToggles={setToggles} isPlaying={isPlaying} history={history}
-        canPrev={stepIdx > -1} canNext={stepIdx < steps.length - 1}
+        canPrev={canPrev} canNext={canNext}
+        isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen}
       />
 
-      <main className="flex-1 flex flex-col relative z-10 overflow-hidden">
-        {/* Cinematic Header / Status Bar */}
-        <div className="p-8 pb-4 flex items-end justify-between border-b border-slate-800/30">
-          <div className="max-w-xl">
-            <div className="flex items-center gap-3 mb-2">
-              <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-[0.2em] transition-colors duration-500
-                ${currStep?.actionType === 'rotate' ? 'bg-amber-500 text-amber-950' : 
-                  currStep?.actionType === 'imbalance' ? 'bg-rose-600 text-rose-50' : 
-                  'bg-indigo-600/20 text-indigo-400'}`}>
-                {currStep?.actionType || 'System Idle'}
-              </span>
-              <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
-                Stack Step // 0x{stepIdx + 1}
-              </span>
+      <main className="flex-1 flex flex-col relative overflow-hidden z-10">
+        {/* Top Header / Status Bar */}
+        <header className="px-6 py-5 md:px-8 md:py-8 flex flex-col md:flex-row items-start md:items-center justify-between border-b border-slate-800/40 glass-panel lg:border-none lg:bg-transparent">
+          <div className="flex items-center gap-4 w-full md:w-auto mb-4 md:mb-0">
+            <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden w-10 h-10 flex items-center justify-center bg-slate-900 border border-slate-800 rounded-xl text-indigo-500">
+               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-[0.2em] shadow-lg
+                  ${currStep?.actionType === 'rotate' ? 'bg-amber-500 text-amber-950' : 
+                    currStep?.actionType === 'imbalance' ? 'bg-rose-600 text-rose-50' : 
+                    'bg-indigo-600 text-indigo-50'}`}>
+                  {currStep?.actionType || 'IDLE'}
+                </span>
+                <span className="text-[9px] font-mono text-slate-600 font-bold uppercase tracking-widest">
+                  FRAME_SEQ // 0x{stepIdx + 1}
+                </span>
+              </div>
+              <h2 className="text-xl md:text-2xl font-black text-white tracking-tight leading-tight truncate max-w-[280px] md:max-w-md">
+                {currStep?.description || 'Awaiting Sequence Input...'}
+              </h2>
             </div>
-            <h2 className="text-3xl font-black text-white tracking-tight leading-tight">
-              {currStep?.description || 'Initialize sequence to visualize tree transformations.'}
-            </h2>
           </div>
           
-          <div className="flex flex-col items-end">
-            <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Frame Progress</div>
-            <div className="flex gap-1">
+          <div className="hidden md:flex flex-col items-end">
+            <div className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2">Temporal Buffer</div>
+            <div className="flex gap-1.5">
               {Array.from({length: Math.min(steps.length, 12)}).map((_, i) => (
-                <div key={i} className={`w-3 h-1 rounded-full transition-all duration-300 ${i <= stepIdx % 12 ? 'bg-indigo-500 w-6' : 'bg-slate-800'}`} />
+                <div key={i} className={`h-1 rounded-full transition-all duration-500 ${i <= stepIdx % 12 ? 'bg-indigo-500 w-6 shadow-[0_0_10px_rgba(99,102,241,0.6)]' : 'bg-slate-800 w-3'}`} />
               ))}
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* Tree Render Zones */}
-        <div className="flex-1 flex relative">
+        {/* Dynamic Tree Zones */}
+        <div className="flex-1 flex flex-col md:flex-row relative">
           {toggles.comp && (
-            <div className="flex-1 border-r border-slate-800/40 relative bg-slate-950/20">
-              <div className="absolute top-6 left-1/2 -translate-x-1/2 z-40">
-                <div className="glass px-1 py-1 rounded-2xl flex items-center shadow-2xl">
+            <div className="flex-1 border-b md:border-b-0 md:border-r border-slate-800/40 relative bg-slate-950/30">
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40">
+                <div className="glass-panel px-1 py-1 rounded-2xl flex items-center shadow-2xl border-white/5">
                   <button 
                     onClick={() => setCompOffset(p => Math.min(history.length, p+1))} 
-                    className="w-8 h-8 rounded-xl hover:bg-white/10 text-slate-400 disabled:opacity-10 transition-colors"
+                    className="w-8 h-8 rounded-xl hover:bg-white/10 text-slate-500 disabled:opacity-10"
                     disabled={compOffset >= history.length}
-                  >
-                    ←
-                  </button>
-                  <span className="px-6 text-[10px] font-black text-indigo-400 uppercase tracking-widest min-w-[160px] text-center">
+                  >←</button>
+                  <span className="px-5 text-[9px] font-black text-indigo-400 uppercase tracking-widest min-w-[120px] text-center">
                     {leftLabel}
                   </span>
                   <button 
                     onClick={() => setCompOffset(p => Math.max(0, p-1))} 
-                    className="w-8 h-8 rounded-xl hover:bg-white/10 text-slate-400 disabled:opacity-10 transition-colors"
+                    className="w-8 h-8 rounded-xl hover:bg-white/10 text-slate-500 disabled:opacity-10"
                     disabled={compOffset === 0}
-                  >
-                    →
-                  </button>
+                  >→</button>
                 </div>
               </div>
-              <TreeCanvas root={leftTree} showHeights={toggles.h} showBalanceFactors={toggles.bf} label="Comparison Analyzer" />
+              <TreeCanvas root={leftTree} showHeights={toggles.h} showBalanceFactors={toggles.bf} label="Comparison Buffer" />
             </div>
           )}
           
           <div className="flex-1 relative">
-            <TreeCanvas root={displayTree} highlightNodeId={currStep?.highlightNodeId} showHeights={toggles.h} showBalanceFactors={toggles.bf} label="Live Animation Buffer" />
+            <TreeCanvas root={displayTree} highlightNodeId={currStep?.highlightNodeId} showHeights={toggles.h} showBalanceFactors={toggles.bf} label="Execution Trace" />
           </div>
+        </div>
+
+        {/* Mobile Control Bar */}
+        <div className="md:hidden p-4 glass-panel border-t border-white/5 flex items-center justify-between">
+            <button onClick={() => onStep(-1)} disabled={!canPrev} className="p-3 bg-slate-900 rounded-xl text-slate-500 disabled:opacity-20">←</button>
+            <button onClick={() => setIsPlaying(!isPlaying)} className={`flex-1 mx-4 py-3 rounded-xl font-black text-[10px] tracking-widest uppercase ${isPlaying ? 'bg-amber-600' : 'bg-indigo-600'}`}>
+              {isPlaying ? 'Pause Sequence' : 'Resume Sequence'}
+            </button>
+            <button onClick={() => onStep(1)} disabled={!canNext} className="p-3 bg-slate-900 rounded-xl text-slate-500 disabled:opacity-20">→</button>
         </div>
       </main>
     </div>
